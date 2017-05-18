@@ -1,0 +1,27 @@
+{
+  "name": "genetic-robot-lab",
+  "version": "1.0.0",
+  "description": "Labbing around with genetic algorithms",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/semoninfernal/genetic-robot-lab.git"
+  },
+  "keywords": [
+    "node",
+    "genetic-algorithm"
+  ],
+  "author": "Simon Farås & Fredrik Jakobsson",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/semoninfernal/genetic-robot-lab/issues"
+  },
+  "homepage": "https://github.com/semoninfernal/genetic-robot-lab#readme",
+  "devDependencies": {
+    "express": "^4.15.3",
+    "serve-static": "^1.12.3"
+  }
+}
