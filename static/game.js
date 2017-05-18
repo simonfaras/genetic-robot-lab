@@ -115,6 +115,41 @@
 		}
 	}
 
+	function bouncingBox(xx, yy, matrix, particleRadius) {
+		let box = Composite.create({ label: 'bouncingBox' });
+
+		let y = 0;
+		let constraintOptions = {
+			stiffness: 0.01,
+
+		}
+
+		function createRectangle(x, y, size) {
+			return Bodies.rectangle(x, y, size, size, { render: {
+					fillStyle: '#CCC',
+					strokeStyle: '#000',
+					lineWidth: size * 0.3
+				}});
+		}
+
+		let column = [];
+		for (let i = 0; i < matrix.length; i++) {
+			column.push(createRectangle(
+				xx,
+				yy + (i * particleRadius),
+				particleRadius
+			))
+			
+			Composite.addBody(box, column[i]);
+
+			if (i > 0) {
+				connect(box, column[i - 1], column[i], constraintOptions);
+			}
+		}
+
+		return box;
+	}
+
 	function softSkeleton(xx, yy, matrix, particleRadius, constraintOptions, callback) {
 
 		let c = Composite.create({ label: 'Skeleton' });
@@ -235,7 +270,12 @@
 			});
 		}
 	);
+	
+	const boxShape = [1, 1, 1];
+	const boxStartY = sceneHeight - ( boxShape.length * size ) - 20;
+	let boxes = bouncingBox(40, boxStartY, boxShape, size);
 
+	World.add(world, boxes);
 	World.add(world, girl);
 
 
@@ -276,9 +316,14 @@
 			repeat: 1,
 			yoyo: true
 		});
-		console.log(target);
+		console.log(target, force);
 		if ( target ) {
 			if ( haveKissed ) { force *= 0.2; }
+
+			const boxTarget = boxes.bodies[boxes.bodies.length - 1];
+			Body.applyForce(boxTarget, boxTarget.position, {
+				x: 0, y: -0.09
+			});
 
 			Body.applyForce(target, target.position, {
 				x: 0, y: force
@@ -492,6 +537,13 @@
 	resizeRender();
 
 	document.body.insertBefore(canvas, document.body.firstChild);
+
+	return {
+		robot: softSkeleton,
+		addRobot: robot => World.add(world, robot),
+		reset: () => console.log('HUR GÖR VI EN RESET?'),
+		getResults: () => console.log('RETURNERA EN ARRAY MED RESULTAT KOPPLADE TILL ROBOTAR')
+	}
 
 //   Vue.filter('round', function(value){ return Math.round(value * 100) / 100 });
 //   let el = document.createElement('div');

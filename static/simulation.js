@@ -4,7 +4,7 @@ function main() {
     let isComplete = false;
     const population = new Population({
         goal: 'Hello, World!',
-        size: 10000
+        size: 1000
     });
 
     const display = function(pop) {
@@ -22,7 +22,7 @@ function main() {
         display(population);
     }
 
-    console.log('Done');
+    console.log('Done', completeMember.code);
 }
 
 function Chromosome(code) {
