@@ -8,7 +8,7 @@ window.GenLab.World = (function() {
 
 	let sceneWidth = 800;
 	let sceneHeight = 800;
-
+	let measureJumpActive = false;
 
 	/*////////////////////////////////////////*/
 
@@ -66,6 +66,7 @@ window.GenLab.World = (function() {
 	let walls = [
 		Bodies.rectangle( 0, 0, 20, sceneHeight * 2, { isStatic: true } ),
 		Bodies.rectangle( groundBounds.width, 0, 20, sceneHeight * 2, { isStatic: true } ),
+		Bodies.rectangle( groundBounds.width * .5, 100, groundBounds.width, 40, { isStatic: true } ),
 	];
 	World.add( world, walls );
 
@@ -147,42 +148,59 @@ window.GenLab.World = (function() {
 		return c;
 	}
 
-
-	let color = green;
-	let width = ( size * 5 );
-	let height = ( size * 3);
-	let startY = sceneHeight - ( 3 * size ) - 20;
-	let startX = width;//(sceneWidth/2) - width; //-width/2;
-	console.log( 'startX', startX );
-
 	const characterSimulation = [
 		{ timing:[0,1000] },
 		{ timing:[2000,1000] },
 		{ timing:[0,0] },
-		{ timing:[0,500] },
+		{ timing:[0,3500] },
 		{ timing:[0,0] },
 		{ timing:[3000,0] },
 		{ timing:[1000,0] },
 		{ timing:[0,100] },
 	];
 
+
+
+
+
+
+	const springTimeA = findMinMax(characterSimulation, o => o.timing[0]);
+	const springTimeB = findMinMax(characterSimulation, o => o.timing[1]);
+
+	const simulationTime = Math.max(springTimeA[1], springTimeB[1]);
+
+
+	console.log( 'springTimeA', springTimeA );
+	console.log( 'springTimeB', springTimeB );
+	console.log( 'simulationTime', simulationTime );
+
 	const characterList = [];
 
+	function createCharacters() {
 
-	characterSimulation.map( o => {
-		c = createJumperCharacter(
-			startX,
-			startY,
-			size
-		);
-		characterList.push({ character: c,
-			timing:[...o.timing],
-			yy: c.bodies[ 0 ].position.y,
-			jumpDistance: 0 }
-		);
-		startX = ( width * 2 ) * characterList.length;
-		World.add( world, c );
-	});
+		let color = green;
+		let width = ( size * 5 );
+		let height = ( size * 3);
+		let startY = sceneHeight - ( 3 * size ) - 20;
+		let startX = width;//(sceneWidth/2) - width; //-width/2;
+		console.log( 'startX', startX );
+
+
+		characterSimulation.map( o => {
+			c = createJumperCharacter(
+				startX,
+				startY,
+				size
+			);
+			characterList.push({ character: c,
+				timing:[...o.timing],
+				yy: c.bodies[ 0 ].position.y,
+				jumpDistance: 0 }
+			);
+			startX = ( width * 2 ) * characterList.length;
+			World.add( world, c );
+		});
+	}
 
 
 	world.gravity.y = 0.30;
@@ -224,6 +242,8 @@ window.GenLab.World = (function() {
 			jumpAtTime(character.leftlegA.joint, character.leftlegB.force, o.timing[0]);
 			jumpAtTime(character.rightlegA.joint, character.rightlegB.force, o.timing[1]);
 		});
+		measureJumpActive = true;
+		resetAtTime(simulationTime);
 
 
 	}
@@ -235,6 +255,16 @@ window.GenLab.World = (function() {
 		}, timeMS);
 
 	}
+	function resetAtTime( timeMS ) {
+			setTimeout(function() {
+
+				console.log( 'RESET' );
+				measureJumpActive = false;
+				window.GenLab.World.reset();
+				window.GenLab.World.getResults();
+			}, timeMS);
+
+		}
 
 	function spring( target, force ) {
 		Body.applyForce( target, target.position, {
@@ -306,35 +336,38 @@ window.GenLab.World = (function() {
 	}
 
 
-	function findOuterCharactersValuesX() {
+	function findMinMax( list, func) {
 
-		const maxValueOfX = Math.max( ...characterList.map( o => o.character.bodies[ 0 ].position.x ) );
-		const minValueOfX = Math.min( ...characterList.map( o => o.character.bodies[ 0 ].position.x ) );
+		const max = Math.max( ...list.map( func ));
+		const min = Math.min( ...list.map( func ));
 
-		return [ minValueOfX, maxValueOfX ];
+		return [ min, max ];
 	}
 
 	function measureJump() {
-		let yy;
-		let y;
-		let jd;
-		characterList.map( o => {
-			yy = o.yy;
-			y = o.character.bodies[ 0 ].position.y;
-			jd = o.jumpDistance;
-			// console.log( 'yy', yy );
-			// console.log( 'y', y );
-			// o.character.jumpDistance = yy < y ? yy : y;
-			let distance = Math.abs(yy - y);
-			o.jumpDistance = Math.max(jd, distance);
-			// o.character.jumpDistance = yy < y ? Math.abs(yy - y) : y;
-			// console.log( 'o.jumpDistance', o.jumpDistance );
-		} );
+		if(measureJumpActive) {
+
+			let yy;
+			let y;
+			let jd;
+			characterList.map( o => {
+				yy = o.yy;
+				y = o.character.bodies[ 0 ].position.y;
+				jd = o.jumpDistance;
+				// console.log( 'yy', yy );
+				// console.log( 'y', y );
+				// o.character.jumpDistance = yy < y ? yy : y;
+				let distance = Math.abs(yy - y);
+				o.jumpDistance = Math.max(jd, distance);
+				// o.character.jumpDistance = yy < y ? Math.abs(yy - y) : y;
+				// console.log( 'o.jumpDistance', o.jumpDistance );
+			} );
+		}
 	}
 
 	function resize() {
 
-		let outerValues = findOuterCharactersValuesX();
+		let outerValues = findMinMax(characterList, o => o.character.bodies[ 0 ].position.x);
 
 		// console.log( 'outerValues', outerValues );
 
@@ -370,15 +403,29 @@ window.GenLab.World = (function() {
 		//resize();
 		measureJump();
 	}
+	createCharacters();
 
 	renderLoop();
 
+
+	function getCharactersJumpDistance() {
+		return characterList.map(o => o.jumpDistance);
+	}
+
+	function reset() {
+		console.log( 'HUR GÖR VI EN RESET?' );
+		//createCharacters();
+	}
+
 	document.body.insertBefore( canvas, document.body.firstChild );
+
 
 	return {
 		addRobot: robot => World.add( world, robot ),
-		reset: () => console.log( 'HUR GÖR VI EN RESET?' ),
-		getResults: () => console.log( 'RETURNERA EN ARRAY MED RESULTAT KOPPLADE TILL ROBOTAR' )
+		reset: () => reset(),
+		getResults: () => getCharactersJumpDistance()
 	}
+
+
 
 })();
