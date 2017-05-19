@@ -48,7 +48,11 @@ window.GenLab.World = (function() {
 		mouse: Mouse.create( canvas )
 	} );
 
-	let ground = Bodies.rectangle( sceneWidth / 2, sceneHeight + (sceneHeight / 2), Math.max( sceneWidth * 4, 2000 ), sceneHeight, {
+	const groundBounds = {
+		width: Math.max( sceneWidth * 4, 2000 ),
+		height: sceneHeight
+	};
+	let ground = Bodies.rectangle( groundBounds.width / 2, sceneHeight + (sceneHeight / 2), groundBounds.width, groundBounds.height, {
 		isStatic: true,
 		render: {
 			opacity: 1,
@@ -60,10 +64,10 @@ window.GenLab.World = (function() {
 	World.add( world, [ mouseConstraint, ground ] );
 
 	let walls = [
-	  Bodies.rectangle(-(sceneWidth / 2), 0, 20, sceneHeight * 2, { isStatic: true }),
-	  Bodies.rectangle(sceneWidth * 2, 0, 20, sceneHeight * 2, { isStatic: true }),
+		Bodies.rectangle( 0, 0, 20, sceneHeight * 2, { isStatic: true } ),
+		Bodies.rectangle( groundBounds.width, 0, 20, sceneHeight * 2, { isStatic: true } ),
 	];
-	World.add(world, walls);
+	World.add( world, walls );
 
 
 	/*////////////////////////////////////////*/
@@ -94,15 +98,19 @@ window.GenLab.World = (function() {
 
 		const c = Composite.create( { label: 'test' } );
 		const stiffness = 0.05;
-		const body = rect( xx+size, yy+size, size*3, size );
+		const body = rect( xx + size, yy + size, size * 3, size );
 
 
-		const leftLegA = rect( xx, yy+(size*2), size );
-		const leftLegB = rect( xx, yy+(size*3), size);
+		const leftLegA = rect( xx, yy + (size * 2), size );
+		const leftLegB = rect( xx, yy + (size * 3), size );
 
-		const rightLegA = rect( xx+(size*2), yy+(size*2), size );
-		const rightLegB = rect( xx+(size*2), yy+(size*3), size );
+		const rightLegA = rect( xx + (size * 2), yy + (size * 2), size );
+		const rightLegB = rect( xx + (size * 2), yy + (size * 3), size );
 
+		// Body.setMass(leftLegB, 0.4);
+		// Body.setMass(rightLegB, 0.4);
+		// Body.setMass(leftLegA, 0.4);
+		// Body.setMass(rightLegA, 0.4);
 
 		Composite.addBody( c, body );
 		Composite.addBody( c, leftLegA );
@@ -111,27 +119,27 @@ window.GenLab.World = (function() {
 		Composite.addBody( c, rightLegB );
 
 		connect( c, leftLegA, leftLegB, {
-			pointA: { x: 0, y: (size*0.5) },
-			pointB: { x: 0, y: -(size*0.5) },
+			pointA: { x: 0, y: (size * 0.5) },
+			pointB: { x: 0, y: -(size * 0.5) },
 			stiffness: stiffness,
 			render: { visible: true }
 		} );
 		connect( c, rightLegA, rightLegB, {
-			pointA: { x: 0, y: (size*0.5) },
-			pointB: { x: 0, y: -(size*0.5) },
+			pointA: { x: 0, y: (size * 0.5) },
+			pointB: { x: 0, y: -(size * 0.5) },
 			stiffness: stiffness,
 			render: { visible: true }
 		} );
 
 		connect( c, body, leftLegA, {
-			pointA: { x: -((size*2)*0.5), y: (size*0.5) },
-			pointB: { x: 0, y: -(size*0.5) },
+			pointA: { x: -((size * 2) * 0.5), y: (size * 0.5) },
+			pointB: { x: 0, y: -(size * 0.5) },
 			stiffness: 1,
 			render: { visible: true }
 		} );
 		connect( c, body, rightLegA, {
-			pointA: { x: ((size*2)*0.5), y: (size*0.5) },
-			pointB: { x: 0, y: -(size*0.5) },
+			pointA: { x: ((size * 2) * 0.5), y: (size * 0.5) },
+			pointB: { x: 0, y: -(size * 0.5) },
 			stiffness: 1,
 			render: { visible: true }
 		} );
@@ -140,32 +148,41 @@ window.GenLab.World = (function() {
 	}
 
 
-
 	let color = green;
 	let width = ( size * 5 );
 	let height = ( size * 3);
 	let startY = sceneHeight - ( 3 * size ) - 20;
-	let startX =width;//(sceneWidth/2) - width; //-width/2;
+	let startX = width;//(sceneWidth/2) - width; //-width/2;
 	console.log( 'startX', startX );
 
-	const jumpCharacter = createJumperCharacter(
-		startX,
-		startY,
-		size
-	);
+	const characterSimulation = [
+		{ timing:[0,1000] },
+		{ timing:[2000,1000] },
+		{ timing:[0,0] },
+		{ timing:[0,500] },
+		{ timing:[0,0] },
+		{ timing:[3000,0] },
+		{ timing:[1000,0] },
+		{ timing:[0,100] },
+	];
 
-	startX = width*9;//Math.max( width * 2, sceneWidth - width / 2 ); // - ( arr2[0].length * size );
-	console.log( 'startX', startX );
-	const jumpCharacter2 = createJumperCharacter(
-		startX,
-		startY,
-		size
-	);
+	const characterList = [];
 
 
-	const characterList = [jumpCharacter, jumpCharacter2];
-	World.add( world, jumpCharacter );
-	World.add( world, jumpCharacter2 );
+	characterSimulation.map( o => {
+		c = createJumperCharacter(
+			startX,
+			startY,
+			size
+		);
+		characterList.push({ character: c,
+			timing:[...o.timing],
+			yy: c.bodies[ 0 ].position.y,
+			jumpDistance: 0 }
+		);
+		startX = ( width * 2 ) * characterList.length;
+		World.add( world, c );
+	});
 
 
 	world.gravity.y = 0.30;
@@ -176,36 +193,46 @@ window.GenLab.World = (function() {
 
 	function onKeyDown( e ) {
 
-		let key = ( e.code || e.key || '' ).toLowerCase().replace( /^(key|digit|numpad)/, '' );
-
-		let character = {
-			leftlegA: {
-				joint: jumpCharacter.bodies[ 2 ],
-				force: 0.04
-			},
-			leftlegB: {
-				joint: jumpCharacter.bodies[ 1 ],
-				force: -0.04
-			},
-			rightlegA: {
-				joint: jumpCharacter.bodies[ 4 ],
-				force: 0.04
-			},
-			rightlegB: {
-				joint: jumpCharacter.bodies[ 3 ],
-				force: -0.04
-			}
-		};
+		//let key = ( e.code || e.key || '' ).toLowerCase().replace( /^(key|digit|numpad)/, '' );
 
 
-		switch ( key ) {
-			case 'arrowright':
-				spring( character.leftlegA.joint, character.leftlegB.force );
-				break;
-			case 'arrowleft':
-				spring( character.rightlegA.joint, character.rightlegB.force );
-				break;
-		}
+		characterList.map( o => {
+
+			let c = o.character.bodies;
+			let character = {
+				leftlegA: {
+					joint: c[ 2 ],
+					force: 0.04
+				},
+				leftlegB: {
+					joint: c[ 1 ],
+					force: -0.04
+				},
+				rightlegA: {
+					joint: c[ 4 ],
+					force: 0.04
+				},
+				rightlegB: {
+					joint: c[ 3 ],
+					force: -0.04
+				}
+			};
+
+
+			// spring( character.leftlegA.joint, character.leftlegB.force );
+			// spring( character.rightlegA.joint, character.rightlegB.force );
+			jumpAtTime(character.leftlegA.joint, character.leftlegB.force, o.timing[0]);
+			jumpAtTime(character.rightlegA.joint, character.rightlegB.force, o.timing[1]);
+		});
+
+
+	}
+
+
+	function jumpAtTime( joint, force, timeMS ) {
+		setTimeout(function() {
+			spring( joint, force );
+		}, timeMS);
 
 	}
 
@@ -276,36 +303,49 @@ window.GenLab.World = (function() {
 
 	function ease( current, target, ease ) {
 		return current + (target - current) * ( ease || 0.2 );
-	};
-
+	}
 
 
 	function findOuterCharactersValuesX() {
 
-		const maxValueOfX = Math.max(...characterList.map(o => o.bodies[0].position.x));
-		const minValueOfX = Math.min(...characterList.map(o => o.bodies[0].position.x));
+		const maxValueOfX = Math.max( ...characterList.map( o => o.character.bodies[ 0 ].position.x ) );
+		const minValueOfX = Math.min( ...characterList.map( o => o.character.bodies[ 0 ].position.x ) );
 
-		return [minValueOfX, maxValueOfX];
+		return [ minValueOfX, maxValueOfX ];
 	}
 
+	function measureJump() {
+		let yy;
+		let y;
+		let jd;
+		characterList.map( o => {
+			yy = o.yy;
+			y = o.character.bodies[ 0 ].position.y;
+			jd = o.jumpDistance;
+			// console.log( 'yy', yy );
+			// console.log( 'y', y );
+			// o.character.jumpDistance = yy < y ? yy : y;
+			let distance = Math.abs(yy - y);
+			o.jumpDistance = Math.max(jd, distance);
+			// o.character.jumpDistance = yy < y ? Math.abs(yy - y) : y;
+			// console.log( 'o.jumpDistance', o.jumpDistance );
+		} );
+	}
 
-
-	function renderLoop() {
-
-		requestAnimationFrame( renderLoop );
+	function resize() {
 
 		let outerValues = findOuterCharactersValuesX();
 
 		// console.log( 'outerValues', outerValues );
 
-		let distance = Math.abs( outerValues[0] - outerValues[1] ) + (sceneWidth*4);
+		let distance = Math.abs( outerValues[ 0 ] - outerValues[ 1 ] ) + ((width * 3) * 2);
 
 		let boundsScaleTarget = (distance / sceneWidth);
 
 		boundsScale = ease( boundsScale, boundsScaleTarget, (initial ? 1 : 0.01 ) ); //+= scaleFactor;
 
 		// scale the render bounds
-		render.bounds.min.x = ease( render.bounds.min.x, Math.min( outerValues[0] - outerValues[1] ), (initial ? 1 : 0.01) );
+		render.bounds.min.x = ease( render.bounds.min.x, Math.min( outerValues[ 0 ] - outerValues[ 1 ] ), (initial ? 1 : 0.01) );
 		render.bounds.max.x = render.bounds.min.x + render.options.width * boundsScale;
 
 		render.bounds.min.y = (sceneHeight * -0.1 ) * boundsScale;
@@ -320,6 +360,16 @@ window.GenLab.World = (function() {
 
 	}
 
+	render.bounds.min.x = 0;
+	render.bounds.max.x = sceneWidth * 4;
+	render.bounds.min.y = 0;
+	render.bounds.max.y = sceneHeight * 4;
+
+	function renderLoop() {
+		requestAnimationFrame( renderLoop );
+		//resize();
+		measureJump();
+	}
 
 	renderLoop();
 
