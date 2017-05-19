@@ -148,45 +148,20 @@ window.GenLab.World = (function() {
 		return c;
 	}
 
-	const characterSimulation = [
-		{ timing:[0,1000] },
-		{ timing:[2000,1000] },
-		{ timing:[0,0] },
-		{ timing:[0,3500] },
-		{ timing:[0,0] },
-		{ timing:[3000,0] },
-		{ timing:[1000,0] },
-		{ timing:[0,100] },
-	];
 
-
-
-
-
-
-	const springTimeA = findMinMax(characterSimulation, o => o.timing[0]);
-	const springTimeB = findMinMax(characterSimulation, o => o.timing[1]);
-
-	const simulationTime = Math.max(springTimeA[1], springTimeB[1]);
-
-
-	console.log( 'springTimeA', springTimeA );
-	console.log( 'springTimeB', springTimeB );
-	console.log( 'simulationTime', simulationTime );
 
 	const characterList = [];
 
-	function createCharacters() {
+	function createCharacters(settings) {
 
 		let color = green;
 		let width = ( size * 5 );
 		let height = ( size * 3);
 		let startY = sceneHeight - ( 3 * size ) - 20;
 		let startX = width;//(sceneWidth/2) - width; //-width/2;
-		console.log( 'startX', startX );
 
 
-		characterSimulation.map( o => {
+		settings.map( o => {
 			c = createJumperCharacter(
 				startX,
 				startY,
@@ -214,8 +189,14 @@ window.GenLab.World = (function() {
 		//let key = ( e.code || e.key || '' ).toLowerCase().replace( /^(key|digit|numpad)/, '' );
 
 
-		characterList.map( o => {
+		
+		
 
+
+	}
+
+	const jump = () => new Promise(resolve => {
+		characterList.map( o => {
 			let c = o.character.bodies;
 			let character = {
 				leftlegA: {
@@ -236,17 +217,23 @@ window.GenLab.World = (function() {
 				}
 			};
 
-
-			// spring( character.leftlegA.joint, character.leftlegB.force );
-			// spring( character.rightlegA.joint, character.rightlegB.force );
 			jumpAtTime(character.leftlegA.joint, character.leftlegB.force, o.timing[0]);
 			jumpAtTime(character.rightlegA.joint, character.rightlegB.force, o.timing[1]);
 		});
+
+		const springTimeA = findMinMax(characterList, o => o.timing[0]);
+		const springTimeB = findMinMax(characterList, o => o.timing[1]);
+
+		const simulationTime = Math.max(springTimeA[1], springTimeB[1]);
+
 		measureJumpActive = true;
-		resetAtTime(simulationTime);
 
-
-	}
+		setTimeout(() => {
+			World.clear(world, true),
+			measureJumpActive = false,
+			resolve();
+		}, simulationTime);
+	});
 
 
 	function jumpAtTime( joint, force, timeMS ) {
@@ -255,16 +242,6 @@ window.GenLab.World = (function() {
 		}, timeMS);
 
 	}
-	function resetAtTime( timeMS ) {
-			setTimeout(function() {
-
-				console.log( 'RESET' );
-				measureJumpActive = false;
-				window.GenLab.World.reset();
-				window.GenLab.World.getResults();
-			}, timeMS);
-
-		}
 
 	function spring( target, force ) {
 		Body.applyForce( target, target.position, {
@@ -403,8 +380,6 @@ window.GenLab.World = (function() {
 		//resize();
 		measureJump();
 	}
-	createCharacters();
-
 	renderLoop();
 
 
@@ -412,20 +387,20 @@ window.GenLab.World = (function() {
 		return characterList.map(o => o.jumpDistance);
 	}
 
-	function reset() {
-		console.log( 'HUR GÖR VI EN RESET?' );
-		//createCharacters();
-	}
-
 	document.body.insertBefore( canvas, document.body.firstChild );
 
-
 	return {
-		addRobot: robot => World.add( world, robot ),
-		reset: () => reset(),
-		getResults: () => getCharactersJumpDistance()
+		run: (robots) => new Promise(resolve => {
+			createCharacters(robots);
+
+			jump().then(() => {
+				const result = characterList.map(({timing, jumpDistance}) => ({
+					timing,
+					jumpDistance
+				}));
+				characterList.splice(0, characterList.length);
+				resolve(result);
+			});
+		})
 	}
-
-
-
 })();
