@@ -115,25 +115,64 @@
 		}
 	}
 
+	const robotShape = [
+		[2, 2, 2, 2],
+		[1, 0, 0, 1],
+		[1, 0, 0, 1],
+		[1, 0, 0, 1]
+	]
+
 	function bouncingBox(xx, yy, matrix, particleRadius) {
 		let box = Composite.create({ label: 'bouncingBox' });
+		let lastRow = null;
+		const verticalStiffness = 0.01;
+		const horozontalStiffness = 1;
 
 		let y = 0;
-		let constraintOptions = {
-			stiffness: 0.01,
 
-		}
-
-		function createRectangle(x, y, size) {
+		// Render box here, we want the top block to  be solid!
+		function createRectangle(x, y, size, type) {
 			return Bodies.rectangle(x, y, size, size, { render: {
 					fillStyle: '#CCC',
 					strokeStyle: '#000',
-					lineWidth: size * 0.3
+					lineWidth: size * 0.3,
+					label: type
 				}});
 		}
 
 		let column = [];
 		for (let i = 0; i < matrix.length; i++) {
+			const row = matrix[i];
+			let x = 0;
+
+			for (let j = 0; j < row.length; j++) {
+				let type = null;
+				switch (row[j]) {
+					case 1:
+						type = 'leg';
+						break;
+					case 2:
+						type = 'body'
+						break;
+				}
+
+				if (type) {
+					row[j] = createRectangle(
+						xx + (j * particleRadius),
+						yy + (i * particleRadius),
+						size,
+						type
+						);
+
+					Composite.addBody(box, row[j]);
+
+					connect(box, row[j - 1], row[j], { stiffness: horozontalStiffness});
+
+				}
+			}
+
+
+
 			column.push(createRectangle(
 				xx,
 				yy + (i * particleRadius),
@@ -144,6 +183,10 @@
 
 			if (i > 0) {
 				connect(box, column[i - 1], column[i], constraintOptions);
+
+				if (lastRow) {
+
+				}
 			}
 		}
 
@@ -271,7 +314,7 @@
 		}
 	);
 	
-	const boxShape = [1, 1, 1];
+	const boxShape = [1, 1];
 	const boxStartY = sceneHeight - ( boxShape.length * size ) - 20;
 	let boxes = bouncingBox(40, boxStartY, boxShape, size);
 
@@ -321,8 +364,16 @@
 			if ( haveKissed ) { force *= 0.2; }
 
 			const boxTarget = boxes.bodies[boxes.bodies.length - 1];
+			const boxTarget2 = boxes.bodies[boxes.bodies.length - 2];
+
+			console.log(boxTarget.id, boxTarget2.id);
+
+			const boxForce = 0.09;
 			Body.applyForce(boxTarget, boxTarget.position, {
-				x: 0, y: -0.09
+				x: 0, y: boxForce * -2.1
+			});
+			Body.applyForce(boxTarget, boxTarget.position, {
+				x: 0, y: boxForce
 			});
 
 			Body.applyForce(target, target.position, {
