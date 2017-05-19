@@ -1,28 +1,11 @@
-(function() {
+window.GenLab = {};
+window.GenLab.World = (function() {
 
 	const green = '#62D2A2';
 	const pink = '#ff0080';
 	const size = 30;
 	const speed = 0.07;
-/*
 
-	const shape = [
-		[0,0,0,0,0,0,0,0,0,0,0],
-		[0,0,0,0,0,0,0,0,0,0,0],
-		[0,0,0,0,0,0,0,0,0,0,0],
-		[0,0,0,0,0,0,0,0,0,0,0],
-		[0,0,0,0,0,0,0,0,0,0,0],
-		[0,0,0,0,0,0,0,0,0,0,0],
-		[0,0,0,0,0,0,0,0,0,0,0],
-		[0,0,0,0,0,0,0,0,0,0,0],
-		[0,0,0,0,0,0,0,0,0,0,0],
-		[0,0,0,0,0,0,0,0,0,0,0],
-		[0,0,0,0,1,1,1,0,0,0,0],
-		[0,0,0,1,1,1,1,1,0,0,0],
-		[0,0,0,1,1,0,1,1,0,0,0],
-		[0,0,0,1,1,0,1,1,0,0,0],
-	];
-*/
 	const shape = [
 		[0,0,1,0,0],
 		[0,1,1,1,0],
@@ -122,15 +105,35 @@
 		[1, 0, 0, 1]
 	]
 
-	function bouncingBox(xx, yy, matrix, particleRadius) {
-		let box = Composite.create({ label: 'bouncingBox' });
+    function simpleBox(xx, yy, particleRadius) {
+        return Bodies.rectangle(
+            xx, yy, particleRadius, particleRadius, {
+                render: {
+                    fillStyle: '#CCC',
+                    strokeStyle: '#000',
+                    lineWidth: particleRadius * 0.3
+                }
+            }
+        )
+    }
+
+	function boucningRobot(xx, yy, matrix, particleRadius) {
+		let robot = Composite.create({ label: 'bouncinRobot' });
 		let lastRow = null;
 		const verticalStiffness = 0.01;
 		const horozontalStiffness = 1;
 
+        const constraintOptions = {
+            solid: {
+                stiffness: horozontalStiffness
+            },
+            spring: {
+                stiffness: verticalStiffness
+            }
+        };
+
 		let y = 0;
 
-		// Render box here, we want the top block to  be solid!
 		function createRectangle(x, y, size, type) {
 			return Bodies.rectangle(x, y, size, size, { render: {
 					fillStyle: '#CCC',
@@ -140,7 +143,6 @@
 				}});
 		}
 
-		let column = [];
 		for (let i = 0; i < matrix.length; i++) {
 			const row = matrix[i];
 			let x = 0;
@@ -158,39 +160,30 @@
 
 				if (type) {
 					row[j] = createRectangle(
-						xx + (j * particleRadius),
-						yy + (i * particleRadius),
+						xx + (x * particleRadius),
+						yy + (y * particleRadius),
 						size,
 						type
 						);
 
-					Composite.addBody(box, row[j]);
+					Composite.addBody(robot, row[j]);
 
-					connect(box, row[j - 1], row[j], { stiffness: horozontalStiffness});
+					connect(robot, row[j - 1], row[j], constraintOptions.solid);
 
-				}
-			}
-
-
-
-			column.push(createRectangle(
-				xx,
-				yy + (i * particleRadius),
-				particleRadius
-			))
-			
-			Composite.addBody(box, column[i]);
-
-			if (i > 0) {
-				connect(box, column[i - 1], column[i], constraintOptions);
-
-				if (lastRow) {
+                    if (lastRow) {
+                        connect(robot, row[j], lastRow[j], constraintOptions.spring);
+                    }
 
 				}
+
+                x++;
 			}
+
+            lastRow = row;
+            y++;
 		}
 
-		return box;
+		return robot;
 	}
 
 	function softSkeleton(xx, yy, matrix, particleRadius, constraintOptions, callback) {
@@ -314,11 +307,10 @@
 		}
 	);
 	
-	const boxShape = [1, 1];
-	const boxStartY = sceneHeight - ( boxShape.length * size ) - 20;
-	let boxes = bouncingBox(40, boxStartY, boxShape, size);
 
-	World.add(world, boxes);
+	const box = simpleBox(40, startY, size);
+
+    World.add(world, box);
 	World.add(world, girl);
 
 
@@ -363,16 +355,9 @@
 		if ( target ) {
 			if ( haveKissed ) { force *= 0.2; }
 
-			const boxTarget = boxes.bodies[boxes.bodies.length - 1];
-			const boxTarget2 = boxes.bodies[boxes.bodies.length - 2];
-
-			console.log(boxTarget.id, boxTarget2.id);
-
-			const boxForce = 0.09;
-			Body.applyForce(boxTarget, boxTarget.position, {
-				x: 0, y: boxForce * -2.1
-			});
-			Body.applyForce(boxTarget, boxTarget.position, {
+			const boxForce = -0.01;
+            console.log(box);
+			Body.applyForce(box, box.position, {
 				x: 0, y: boxForce
 			});
 
@@ -590,40 +575,10 @@
 	document.body.insertBefore(canvas, document.body.firstChild);
 
 	return {
-		robot: softSkeleton,
+		robot: simpleBox,
 		addRobot: robot => World.add(world, robot),
 		reset: () => console.log('HUR GÖR VI EN RESET?'),
 		getResults: () => console.log('RETURNERA EN ARRAY MED RESULTAT KOPPLADE TILL ROBOTAR')
 	}
-
-//   Vue.filter('round', function(value){ return Math.round(value * 100) / 100 });
-//   let el = document.createElement('div');
-//   document.body.appendChild(el);
-
-//   let v = new Vue({
-//     el: el,
-//     template: `
-//       <table>
-//       <tr>
-//         <th>boundsScale</th><td>{{ boundsScale | round }}</td>
-//       </tr>
-//       <template v-for="(bound,key) in bounds">
-// <tr v-for="(val,i) in bound">
-//         <th>{{key}}.{{i}}</th>
-//         <td> {{val | round }}</td>
-//       </tr>
-// </template>
-//       </table>
-//     `,
-
-//     data: {
-//       bounds: render.bounds,
-//       boundsScale: boundsScale
-//     },
-
-//     beforeUpdate: function(){
-//       this.boundsScale = boundsScale;
-//     }
-//   })
 
 })();
