@@ -6,30 +6,11 @@ window.GenLab.World = (function() {
 	const size = 30;
 	const speed = 0.07;
 
-	const shape = [
-		[0,0,1,0,0],
-		[0,1,1,1,0],
-		[1,1,1,1,1],
-		[1,1,0,1,1],
-		[1,1,0,1,1],
-	];
-
-	const heartShape = [
-		[0,1,1,0,1,1,0],
-		[1,1,1,1,1,1,1],
-		[0,1,1,1,1,1,0],
-		[0,0,1,1,1,0,0],
-		[0,0,0,1,0,0,0]
-	];
-
-	let haveKissed = false;
 	let sceneWidth = 800;
 	let sceneHeight = 800;
 
 
-
-  /*////////////////////////////////////////*/
-
+	/*////////////////////////////////////////*/
 
 
 	let World = Matter.World,
@@ -50,472 +31,221 @@ window.GenLab.World = (function() {
 	engine.enableSleeping = true;
 
 	let world = engine.world;
-	Engine.run(engine);
+	Engine.run( engine );
 
-  /*////////////////////////////////////////*/
+	/*////////////////////////////////////////*/
 
-	let canvas = document.createElement('canvas');
+	let canvas = document.createElement( 'canvas' );
 	canvas.width = sceneWidth;
 	canvas.height = sceneHeight;
 
-  /*////////////////////////////////////////*/
+	/*////////////////////////////////////////*/
 
 	let MouseConstraint = Matter.MouseConstraint,
 		Mouse = Matter.Mouse;
 
-	let mouseConstraint = MouseConstraint.create(engine,{
-		mouse: Mouse.create(canvas)
-	});
+	let mouseConstraint = MouseConstraint.create( engine, {
+		mouse: Mouse.create( canvas )
+	} );
 
-	let ground = Bodies.rectangle(sceneWidth/2, sceneHeight + (sceneHeight/2), Math.max(sceneWidth * 4, 2000), sceneHeight, {
+	let ground = Bodies.rectangle( sceneWidth / 2, sceneHeight + (sceneHeight / 2), Math.max( sceneWidth * 4, 2000 ), sceneHeight, {
 		isStatic: true,
 		render: {
 			opacity: 1,
 			fillStyle: '#000',
 			strokeStyle: '#000'
 		}
-	});
+	} );
 
-	World.add(world,[ mouseConstraint, ground]);
+	World.add( world, [ mouseConstraint, ground ] );
 
-	// let walls = [
-	//   Bodies.rectangle(-30, 0, 20, sceneHeight * 2, { isStatic: true }),
-	//   Bodies.rectangle(sceneWidth * 2 + 30, 0, 20, sceneHeight * 2, { isStatic: true }),
-	// ];
-	// World.add(world, walls);
+	let walls = [
+	  Bodies.rectangle(-(sceneWidth / 2), 0, 20, sceneHeight * 2, { isStatic: true }),
+	  Bodies.rectangle(sceneWidth * 2, 0, 20, sceneHeight * 2, { isStatic: true }),
+	];
+	World.add(world, walls);
 
 
-  /*////////////////////////////////////////*/
+	/*////////////////////////////////////////*/
 
-	function connect(c, bodyA, bodyB, constraintOptions){
+	function connect( c, bodyA, bodyB, constraintOptions ) {
 		if ( bodyA && bodyB ) {
 			Composite.addConstraint( c, Constraint.create(
-				Common.extend({
+				Common.extend( {
 					bodyA: bodyA,
 					bodyB: bodyB
-				}, constraintOptions)
-			));
+				}, constraintOptions )
+			) );
 		}
 	}
 
-	const robotShape = [
-		[2, 2, 2, 2],
-		[1, 0, 0, 1],
-		[1, 0, 0, 1],
-		[1, 0, 0, 1]
-	]
 
-    function simpleBox(xx, yy, particleRadius) {
-        return Bodies.rectangle(
-            xx, yy, particleRadius, particleRadius, {
-                render: {
-                    fillStyle: '#CCC',
-                    strokeStyle: '#000',
-                    lineWidth: particleRadius * 0.3
-                }
-            }
-        )
-    }
-
-	function boucningRobot(xx, yy, matrix, particleRadius) {
-		let robot = Composite.create({ label: 'bouncinRobot' });
-		let lastRow = null;
-		const verticalStiffness = 0.01;
-		const horozontalStiffness = 1;
-
-        const constraintOptions = {
-            solid: {
-                stiffness: horozontalStiffness
-            },
-            spring: {
-                stiffness: verticalStiffness
-            }
-        };
-
-		let y = 0;
-
-		function createRectangle(x, y, size, type) {
-			return Bodies.rectangle(x, y, size, size, { render: {
-					fillStyle: '#CCC',
-					strokeStyle: '#000',
-					lineWidth: size * 0.3,
-					label: type
-				}});
-		}
-
-		for (let i = 0; i < matrix.length; i++) {
-			const row = matrix[i];
-			let x = 0;
-
-			for (let j = 0; j < row.length; j++) {
-				let type = null;
-				switch (row[j]) {
-					case 1:
-						type = 'leg';
-						break;
-					case 2:
-						type = 'body'
-						break;
-				}
-
-				if (type) {
-					row[j] = createRectangle(
-						xx + (x * particleRadius),
-						yy + (y * particleRadius),
-						size,
-						type
-						);
-
-					Composite.addBody(robot, row[j]);
-
-					connect(robot, row[j - 1], row[j], constraintOptions.solid);
-
-                    if (lastRow) {
-                        connect(robot, row[j], lastRow[j], constraintOptions.spring);
-                    }
-
-				}
-
-                x++;
+	function rect( x, y, w, h ) {
+		return Bodies.rectangle( x, y, w, (h ? h : w), {
+			render: {
+				fillStyle: pink,
+				strokeStyle: '#0000ff',
+				lineWidth: 3
 			}
-
-            lastRow = row;
-            y++;
-		}
-
-		return robot;
-	}
-
-	function softSkeleton(xx, yy, matrix, particleRadius, constraintOptions, callback) {
-
-		let c = Composite.create({ label: 'Skeleton' });
-		let y = 0;
-		let lastRow = null;
-		constraintOptions = constraintOptions || { stiffness: 0.95 };
-
-		callback = callback || function(x,y,size){
-				return Bodies.rectangle( x, y, size, size);
-			};
-
-		for (let i = 0, len = matrix.length; i < len; i++){
-
-
-			//let c = Composite.create({ label: 'Row' + i });
-			let row = matrix[i];
-			let x = 0;
-
-			for (let j = 0, count = row.length; j < count; j++){
-				if ( row[j] ) {
-
-					row[j] = callback(
-						xx + ( x * particleRadius),
-						yy + ( y * particleRadius ),
-						particleRadius,
-						i,
-						j
-					);
-
-					Composite.addBody( c, row[j] );
-
-					connect(c, row[j - 1], row[j], constraintOptions);
-
-					if ( lastRow ) {
-						connect(c, row[j], lastRow[j], constraintOptions);
-						connect(c, row[j], lastRow[j + 1], constraintOptions);
-						connect(c, row[j], lastRow[j - 1], constraintOptions);
-					}
-				}
-				x++;
-			}
-
-			y++;
-			lastRow = row;
-
-		}
-
-		return c;
+		} )
 	};
 
-  /*////////////////////////////////////////*/
+	function createJumperCharacter( xx, yy, size ) {
+
+		const c = Composite.create( { label: 'test' } );
+		const stiffness = 0.05;
+		const body = rect( xx+size, yy+size, size*3, size );
+
+
+		const leftLegA = rect( xx, yy+(size*2), size );
+		const leftLegB = rect( xx, yy+(size*3), size);
+
+		const rightLegA = rect( xx+(size*2), yy+(size*2), size );
+		const rightLegB = rect( xx+(size*2), yy+(size*3), size );
+
+
+		Composite.addBody( c, body );
+		Composite.addBody( c, leftLegA );
+		Composite.addBody( c, leftLegB );
+		Composite.addBody( c, rightLegA );
+		Composite.addBody( c, rightLegB );
+
+		connect( c, leftLegA, leftLegB, {
+			pointA: { x: 0, y: (size*0.5) },
+			pointB: { x: 0, y: -(size*0.5) },
+			stiffness: stiffness,
+			render: { visible: true }
+		} );
+		connect( c, rightLegA, rightLegB, {
+			pointA: { x: 0, y: (size*0.5) },
+			pointB: { x: 0, y: -(size*0.5) },
+			stiffness: stiffness,
+			render: { visible: true }
+		} );
+
+		connect( c, body, leftLegA, {
+			pointA: { x: -((size*2)*0.5), y: (size*0.5) },
+			pointB: { x: 0, y: -(size*0.5) },
+			stiffness: 1,
+			render: { visible: true }
+		} );
+		connect( c, body, rightLegA, {
+			pointA: { x: ((size*2)*0.5), y: (size*0.5) },
+			pointB: { x: 0, y: -(size*0.5) },
+			stiffness: 1,
+			render: { visible: true }
+		} );
+
+		return c;
+	}
+
+
+
+	let color = green;
+	let width = ( size * 5 );
+	let height = ( size * 3);
+	let startY = sceneHeight - ( 3 * size ) - 20;
+	let startX =width;//(sceneWidth/2) - width; //-width/2;
+	console.log( 'startX', startX );
+
+	const jumpCharacter = createJumperCharacter(
+		startX,
+		startY,
+		size
+	);
+
+	startX = width*9;//Math.max( width * 2, sceneWidth - width / 2 ); // - ( arr2[0].length * size );
+	console.log( 'startX', startX );
+	const jumpCharacter2 = createJumperCharacter(
+		startX,
+		startY,
+		size
+	);
+
+
+	const characterList = [jumpCharacter, jumpCharacter2];
+	World.add( world, jumpCharacter );
+	World.add( world, jumpCharacter2 );
 
 
 	world.gravity.y = 0.30;
 
-	let color = green;
-	let width = ( shape[0].length * size );
-	let height = ( shape.length * size );
-	let startY = sceneHeight - ( shape.length * size ) - 20;
-	let startX = 0;//(sceneWidth/2) - width; //-width/2;
 
-	let boy = softSkeleton(
-		startX,
-		startY,
-		shape,
-		size,
-		{ stiffness: 0.09, render: { visible: true } },
-		function(x,y,size, i, j){
-
-			let s = size * ( j < 4 ? 0.8 : 1 );
-			let c =
-				( i === 2 && j === 9 ? '#000' : // Eyeball
-						( j % 2 !== ( i % 2 ? 0 : 1 ) ? color : '#52C292' )
-				);
-
-			return Bodies.rectangle( x, y, s, s,{
-				render: {
-					fillStyle: c,
-					strokeStyle: color,
-					lineWidth: s * 0.3
-				}
-			});
-		}
-	);
-
-//  World.add(world, boy);
-
-  /*////////////////////////////////////////*/
-
-	let shape2 = shape.slice(0);
-	shape2.map(function(row){
-		return row.reverse();
-	});
-
-	color = pink;
-	startX = Math.max(width * 2, sceneWidth - width/2); // - ( arr2[0].length * size );
-
-	let girl = softSkeleton(
-		startX,
-		startY,
-		shape2,
-		size,
-		{ stiffness: 1, render: { visible: false } },
-		function(x,y,size, i, j){
-
-			let s = size * ( j > 7 ? 0.8 : 1 );
-			let c = ( i === 2 && j === 2 ? '#000' : // Eye
-					( j % 2 !== ( i % 2 ? 0 : 1 ) ? color : '#ff0033' )
-			);
-
-			return Bodies.rectangle( x, y, s, s, {
-				//mass: 0.6,
-				render: {
-					fillStyle: c,
-					strokeStyle: color,
-					lineWidth: s * 0.3
-				}
-			});
-		}
-	);
-	
-
-	const box = simpleBox(40, startY, size);
-
-    World.add(world, box);
-	World.add(world, girl);
-
-
-  /*////////////////////////////////////////*/
+	/*////////////////////////////////////////*/
 	// Controls
 
-	function onKeyDown(e){
+	function onKeyDown( e ) {
 
-		//if ( haveKissed ) { return; }
-
-		let key = ( e.code || e.key || '' ).toLowerCase().replace(/^(key|digit|numpad)/,'');
-		let target;
+		let key = ( e.code || e.key || '' ).toLowerCase().replace( /^(key|digit|numpad)/, '' );
 
 		let character = {
-			leftLeg: girl.bodies[girl.bodies.length-3],
-			rightLeg: girl.bodies[girl.bodies.length-1],
-			leftLegForce: -1.4,
-			rightLegForce: -1.4
-		}
-		let force;
+			leftlegA: {
+				joint: jumpCharacter.bodies[ 2 ],
+				force: 0.04
+			},
+			leftlegB: {
+				joint: jumpCharacter.bodies[ 1 ],
+				force: -0.04
+			},
+			rightlegA: {
+				joint: jumpCharacter.bodies[ 4 ],
+				force: 0.04
+			},
+			rightlegB: {
+				joint: jumpCharacter.bodies[ 3 ],
+				force: -0.04
+			}
+		};
+
 
 		switch ( key ) {
 			case 'arrowright':
-				target = character.rightLeg;
-				force = speed * character.rightLegForce;
+				spring( character.leftlegA.joint, character.leftlegB.force );
 				break;
 			case 'arrowleft':
-				target = character.leftLeg;
-				force = speed * character.leftLegForce;
+				spring( character.rightlegA.joint, character.rightlegB.force );
 				break;
-
 		}
 
-		TweenMax.fromTo('[data-key="' + key + '"]', 0.1, {
-			backgroundColor: '#eee'
-		},{
-			backgroundColor: '#ddd',
-			repeat: 1,
-			yoyo: true
-		});
-		console.log(target, force);
-		if ( target ) {
-			if ( haveKissed ) { force *= 0.2; }
+	}
 
-			const boxForce = -0.01;
-            console.log(box);
-			Body.applyForce(box, box.position, {
-				x: 0, y: boxForce
-			});
-
-			Body.applyForce(target, target.position, {
-				x: 0, y: force
-			});
-		}
+	function spring( target, force ) {
+		Body.applyForce( target, target.position, {
+			x: 0, y: force
+		} );
 	}
 
 
+	document.body.addEventListener( 'keydown', onKeyDown );
 
-	document.body.addEventListener('keydown',onKeyDown);
 
+	function bindKeyButton( el ) {
 
-	function bindKeyButton(el){
+		let key = el.getAttribute( 'data-key' );
 
-		let key = el.getAttribute('data-key');
-		function triggerKey(e){
+		function triggerKey( e ) {
 			e.preventDefault();
-			onKeyDown({ key: key });
+			onKeyDown( { key: key } );
 		}
-		el.addEventListener('mousedown',triggerKey);
-		el.addEventListener('touchstart',triggerKey);
+
+		el.addEventListener( 'mousedown', triggerKey );
+		el.addEventListener( 'touchstart', triggerKey );
 	}
 
-	let keys = document.querySelectorAll('[data-key]');
-	for (let i = 0; i < keys.length; i++){
-		bindKeyButton(keys[i]);
+	let keys = document.querySelectorAll( '[data-key]' );
+	for ( let i = 0; i < keys.length; i++ ) {
+		bindKeyButton( keys[ i ] );
 	}
 
 
-
-  /*////////////////////////////////////////*/
-
-
-	function kiss(x,y){
-		if (!haveKissed ) {
-			haveKissed = true;
-
-			// Make everyone weightless
-			let origGravity = world.gravity.y;
-
-			TweenMax.to(world.gravity, 0.5, {
-				y: -0.2,
-				ease: Power3.easeIn
-			});
-
-
-			// Make a heart
-			let s = size / 2;
-			let width = s * (heartShape[0].length);
-			let height = heartShape.length * s;
-			let c = '#DC3737';
-			let heart = softSkeleton(
-				x - (width* 0.4),
-				y - ( height * 1.75 ),
-				heartShape,
-				s,
-				{ stiffness: 0.7, render: { visible: false } },
-				function(x,y,size, i, j){
-
-					return Bodies.rectangle( x, y, s, s, {
-						//frictionAir: -0.2,
-						//density: 0.01,
-						frictionAir: 0.004,
-						//mass: 0.3,
-						render: {
-							fillStyle: c,
-							strokeStyle: c,
-						}
-					});
-				}
-			);
-			World.add(world, heart);
-
-			// Check for sleeping heart pieces & remove them
-			let bodiesLeft = heart.bodies.length;
-			heart.bodies.forEach((body)=>{
-				Events.on(body, 'sleepStart', function(event) {
-				let body = this;
-				Composite.remove(heart, body);
-				bodiesLeft--;
-				if ( bodiesLeft <= 0 ) {
-					World.remove(world, heart);
-					haveKissed = false;
-				}
-			});
-		});
-
-			// Break heart & reset gravity.
-			setTimeout(function(){
-
-				let c = Composite.allConstraints(heart);
-				c.forEach((constraint)=>{ Composite.remove(heart, c); });
-
-				TweenLite.to(world.gravity, 2, {
-					y: origGravity,
-					ease: Power3.easeIn,
-					onComplete: function(){
-						setTimeout(function(){ haveKissed = false; },4000);
-					}
-				});
-
-
-				setTimeout(function(){
-
-					Body.applyForce(girl.bodies[0], girl.bodies[0].position, {
-						x: 0.12, y: 0
-					});
-
-					Body.applyForce(boy.bodies[0], boy.bodies[0].position, {
-						x: -0.09, y: 0
-					});
-
-				},1200);
-
-			},3500);
-
-		}
-	}
-
-  /*////////////////////////////////////////*/
-
-	// Kiss detection & triggering.
-
-	let kissDetectors = [
-		boy.bodies[4],
-		girl.bodies[1]
-	];
-
-	Events.on(engine, 'collisionStart', function(event) {
-		let pairs = event.pairs;
-
-		// change object colours to show those starting a collision
-		for (let i = 0; i < pairs.length; i++) {
-			let pair = pairs[i];
-
-			if (
-				kissDetectors.indexOf(pair.bodyA) > -1
-				&& kissDetectors.indexOf(pair.bodyB) > -1
-			) {
-
-				let center = ( pair.bodyA.position.x + pair.bodyB.position.x ) / 2;
-
-				kiss(center, boy.bodies[0].position.y - (size * 2));
-			}
-		}
-	})
-
-
-  /*////////////////////////////////////////*/
+	/*////////////////////////////////////////*/
 
 	// Render
 
-	let render = Render.create({
+	let render = Render.create( {
 		element: document.body,
 		canvas: canvas,
-		context: canvas.getContext('2d'),
+		context: canvas.getContext( '2d' ),
 		engine: engine,
 		options: {
 			hasBounds: true,
@@ -525,10 +255,10 @@ window.GenLab.World = (function() {
 			wireframes: false,
 			//wireframeBackground: '#ffffff',
 		}
-	});
-	Render.run(render);
+	} );
+	Render.run( render );
 
-  /*////////////////////////////////////////*/
+	/*////////////////////////////////////////*/
 
 	// Resizing
 
@@ -544,19 +274,38 @@ window.GenLab.World = (function() {
 	let boundsScale = 1;
 	let initial = true;
 
-	function ease(current,target,ease){ return current + (target - current) * ( ease || 0.2 ); };
+	function ease( current, target, ease ) {
+		return current + (target - current) * ( ease || 0.2 );
+	};
 
-	function resizeRender() {
 
-		requestAnimationFrame(resizeRender);
 
-		let distance = Math.abs( boy.bodies[0].position.x - girl.bodies[0].position.x ) + width * 2;
+	function findOuterCharactersValuesX() {
+
+		const maxValueOfX = Math.max(...characterList.map(o => o.bodies[0].position.x));
+		const minValueOfX = Math.min(...characterList.map(o => o.bodies[0].position.x));
+
+		return [minValueOfX, maxValueOfX];
+	}
+
+
+
+	function renderLoop() {
+
+		requestAnimationFrame( renderLoop );
+
+		let outerValues = findOuterCharactersValuesX();
+
+		// console.log( 'outerValues', outerValues );
+
+		let distance = Math.abs( outerValues[0] - outerValues[1] ) + (sceneWidth*4);
+
 		let boundsScaleTarget = (distance / sceneWidth);
 
-		boundsScale = ease(boundsScale, boundsScaleTarget, (initial ? 1 : 0.01 )); //+= scaleFactor;
+		boundsScale = ease( boundsScale, boundsScaleTarget, (initial ? 1 : 0.01 ) ); //+= scaleFactor;
 
 		// scale the render bounds
-		render.bounds.min.x = ease( render.bounds.min.x, Math.min(boy.bodies[0].position.x - width, girl.bodies[0].position.x), (initial ? 1 : 0.01));
+		render.bounds.min.x = ease( render.bounds.min.x, Math.min( outerValues[0] - outerValues[1] ), (initial ? 1 : 0.01) );
 		render.bounds.max.x = render.bounds.min.x + render.options.width * boundsScale;
 
 		render.bounds.min.y = (sceneHeight * -0.1 ) * boundsScale;
@@ -565,20 +314,21 @@ window.GenLab.World = (function() {
 		//render.bounds.max.x - (sceneHeight * (1 - boundsScale) * 0.1 );
 
 		// update mouse
-		Mouse.setScale(mouse, { x: boundsScale, y: boundsScale });//boundsScale - boundsScaleTarget);
-		Mouse.setOffset(mouse, render.bounds.min);
+		Mouse.setScale( mouse, { x: boundsScale, y: boundsScale } );//boundsScale - boundsScaleTarget);
+		Mouse.setOffset( mouse, render.bounds.min );
 		initial = false;
 
 	}
-	resizeRender();
 
-	document.body.insertBefore(canvas, document.body.firstChild);
+
+	renderLoop();
+
+	document.body.insertBefore( canvas, document.body.firstChild );
 
 	return {
-		robot: simpleBox,
-		addRobot: robot => World.add(world, robot),
-		reset: () => console.log('HUR GÖR VI EN RESET?'),
-		getResults: () => console.log('RETURNERA EN ARRAY MED RESULTAT KOPPLADE TILL ROBOTAR')
+		addRobot: robot => World.add( world, robot ),
+		reset: () => console.log( 'HUR GÖR VI EN RESET?' ),
+		getResults: () => console.log( 'RETURNERA EN ARRAY MED RESULTAT KOPPLADE TILL ROBOTAR' )
 	}
 
 })();
